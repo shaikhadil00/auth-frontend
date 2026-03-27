@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auth MVP</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: #1e293b;
+      padding: 25px;
+      border-radius: 10px;
+      width: 320px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 5px;
+      border: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background: #3b82f6;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+
+    .switch {
+      text-align: center;
+      margin-top: 10px;
+      cursor: pointer;
+      color: #93c5fd;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .msg {
+      text-align: center;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #22c55e;
+    }
+
+    .error {
+      color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- LOGIN -->
+  <div id="loginBox">
+    <h2>Login</h2>
+    <input id="loginEmail" placeholder="Email">
+    <input id="loginPassword" type="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <div class="switch" onclick="showRegister()">New user? Register</div>
+  </div>
+
+  <!-- REGISTER -->
+  <div id="registerBox" class="hidden">
+    <h2>Register</h2>
+    <input id="regEmail" placeholder="Email">
+    <input id="regPassword" type="password" placeholder="Password">
+    <button onclick="register()">Register</button>
+    <div class="switch" onclick="showLogin()">Already have account?</div>
+  </div>
+
+  <!-- OTP -->
+  <div id="otpBox" class="hidden">
+    <h2>Verify OTP</h2>
+    <input id="otpInput" placeholder="Enter OTP">
+    <button onclick="verifyOTP()">Verify</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="hidden">
+    <h2>Dashboard</h2>
+    <p>You are logged in 🎉</p>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <div id="msg" class="msg"></div>
+
+</div>
+
+<script>
+
+const API = "https://unenvenomed-bev-disyllabic.ngrok-free.dev/api/auth";
+
+let currentEmail = "";
+
+// UI SWITCH
+function showRegister() {
+  loginBox.classList.add("hidden");
+  registerBox.classList.remove("hidden");
+}
+
+function showLogin() {
+  registerBox.classList.add("hidden");
+  loginBox.classList.remove("hidden");
+}
+
+// MESSAGE
+function showMsg(text, isError=false) {
+  msg.innerText = text;
+  msg.className = isError ? "msg error" : "msg";
+}
+
+// REGISTER
+async function register() {
+  const email = regEmail.value;
+  const password = regPassword.value;
+
+  const res = await fetch(`${API}/register`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    currentEmail = email;
+    registerBox.classList.add("hidden");
+    otpBox.classList.remove("hidden");
+    showMsg("OTP sent to email");
+  } else {
+    showMsg(data.error, true);
+  }
+}
+
+// VERIFY OTP
+async function verifyOTP() {
+  const otp = otpInput.value;
+
+  const res = await fetch(`${API}/verify-otp`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ email: currentEmail, otp })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    showMsg("Verified! Please login.");
+    otpBox.classList.add("hidden");
+    showLogin();
+  } else {
+    showMsg(data.error, true);
+  }
+}
+
+// LOGIN
+async function login() {
+  const email = loginEmail.value;
+  const password = loginPassword.value;
+
+  const res = await fetch(`${API}/login`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ email, password })
+  });
+
+  const data = await res.json();
+
+  if (res.ok) {
+    localStorage.setItem("accessToken", data.accessToken);
+    localStorage.setItem("refreshToken", data.refreshToken);
+    localStorage.setItem("deviceId", data.deviceId);
+
+    loginBox.classList.add("hidden");
+    dashboard.classList.remove("hidden");
+
+    showMsg("Login successful");
+  } else {
+    showMsg(data.error, true);
+  }
+}
+
+// LOGOUT
+async function logout() {
+  const deviceId = localStorage.getItem("deviceId");
+
+  await fetch(`${API}/logout`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ deviceId })
+  });
+
+  localStorage.clear();
+
+  dashboard.classList.add("hidden");
+  showLogin();
+
+  showMsg("Logged out");
+}
+
+</script>
+
+</body>
+</html>
